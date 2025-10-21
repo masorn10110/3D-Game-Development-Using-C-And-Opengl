@@ -69,6 +69,7 @@ else()
 endif(WIN32)
 
 set(CHAPTERS
+    0.my_work
     1.getting_started
     2.lighting
     3.model_loading
@@ -76,6 +77,10 @@ set(CHAPTERS
     5.advanced_lighting
     6.pbr
     7.in_practice
+)
+
+set(0.my_work
+    assignment_2
 )
 
 set(1.getting_started
