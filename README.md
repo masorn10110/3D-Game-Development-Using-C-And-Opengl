@@ -1,52 +1,107 @@
-# learnopengl.com code repository
-Contains code samples for all chapters of Learn OpenGL and [https://learnopengl.com](https://learnopengl.com). 
+# SPECIAL TOPIC IV: 3D GAME DEVELOPMENT USING C AND OPENGL
 
-## Windows building
-All relevant libraries are found in /libs and all DLLs found in /dlls (pre-)compiled for Windows. 
-The CMake script knows where to find the libraries so just run CMake script and generate project of choice.
+---
 
-Keep in mind the supplied libraries were generated with a specific compiler version which may or may not work on your system (generating a large batch of link errors). In that case it's advised to build the libraries yourself from the source.
+## 🌀 Overview
 
-## Linux building
-First make sure you have CMake, Git, and GCC by typing as root (sudo) `apt-get install g++ cmake git` and then get the required packages:
-Using root (sudo) and type `apt-get install libsoil-dev libglm-dev libassimp-dev libglew-dev libglfw3-dev libxinerama-dev libxcursor-dev  libxi-dev libfreetype-dev libgl1-mesa-dev xorg-dev` .
+This project is part of the **SPECIAL TOPIC IV: 3D Game Development Using C and OpenGL** course.  
+The course introduces 3D computer graphics through the **OpenGL graphics library**, focusing on mathematical foundations, 3D rendering algorithms, lighting, shading, and animation systems.
 
-**Build through CMake-gui:** The source directory is LearnOpenGL and specify the build directory as LearnOpenGL/build. Creating the build directory within LearnOpenGL is important for linking to the resource files (it also will be ignored by Git). Hit configure and specify your compiler files (Unix Makefiles are recommended), resolve any missing directories or libraries, and then hit generate. Navigate to the build directory (`cd LearnOpenGL/build`) and type `make` in the terminal. This should generate the executables in the respective chapter folders.
+This particular assignment — **3D Kinetic Sculpture Animation** — applies those principles by generating a dynamic, abstract 3D sculpture made from procedural geometry.  
+It demonstrates:
 
-**Build through Cmake command line:**
+- Procedural generation of **sphere meshes** and **galactic formations**
+- Smooth **keyframe-like motion** and **rotational animation**
+- Basic **lighting and shading** in GLSL shaders
+- **Camera control** for interactive observation
+
+---
+
+## 🧱 Project Structure
+
+```markdown
+📁 LearnOpenGL/
+├── 📁 configuration/ # Configuration files for environment or build
+├── 📁 dlls/ # Precompiled dynamic libraries (Windows)
+├── 📁 includes/ # Header includes for external dependencies
+├── 📁 lib/ # Static and shared libraries
+├── 📁 resources/ # Assets used by projects
+│ ├── audio/
+│ ├── fonts/
+│ ├── levels/
+│ ├── objects/
+│ └── textures/
+├── 📁 src/
+│ ├── 📁 0.my_work/
+│ │ └── 📁 assignment_2/
+│ │ │ ├── images
+│ │ │ │ ├── assignment_2_1.png
+│ │ │ │ └── ...
+│ │ │ ├── videos
+│ │ │ │ └── assignment_2.mov
+│ │ │ ├── assignment_2.cpp # Main source code
+│ │ │ ├── assignment_2.vs # Vertex shader
+│ │ │ └── assignment_2.fs # Fragment shader
+│ │ └── README.md
+│ ├── glad.c
+│ └── stb_image.cpp
+├── build.sh # Build script for Linux/macOS
+├── build_windows.sh # Build script for Windows
+├── CMakeLists.txt # CMake build configuration
+├── LICENSE.md
+└── README.md
 ```
-cd /path/to/LearnOpenGL
-mkdir build && cd build
+
+---
+
+## ⚡ Quick Start
+
+### Prerequisites
+
+Make sure you have these installed:
+
+- CMake ≥ 3.10
+- C++17 compatible compiler
+- OpenGL 3.3+
+- Libraries: `GLFW`, `GLAD`, `GLM`, `ASSIMP`, `FREETYPE`
+
+### 🖥️ Build Instructions
+
+#### Step 1. Clone the repository
+
+```bash
+git clone https://github.com/yourusername/Assignment2-KineticSculpture.git
+
+cd Assignment2-KineticSculpture
+```
+
+#### Step 2. Configure the project with CMake
+
+```bash
+mkdir -p build && cd build
 cmake ..
-cmake --build .
 ```
 
-Note that CodeBlocks or other IDEs may have issues running the programs due to problems finding the shader and resource files, however it should still be able to generate the executables. To work around this problem it is possible to set an environment variable to tell the tutorials where the resource files can be found. The environment variable is named LOGL_ROOT_PATH and may be set to the path to the root of the LearnOpenGL directory tree. For example:
+#### Step 3. Build the executable
 
-    `export LOGL_ROOT_PATH=/home/user/tutorials/LearnOpenGL`
-
-Running `ls $LOGL_ROOT_PATH` should list, among other things, this README file and the resources directory.
-
-## Mac OS X building
-Building on Mac OS X is fairly simple:
-```
-brew install cmake assimp glm glfw freetype
-cmake -S . -B build
-cmake --build build -j$(sysctl -n hw.logicalcpu)
-```
-## Create Xcode project on Mac platform
-Thanks [@caochao](https://github.com/caochao):
-After cloning the repo, go to the root path of the repo, and run the command below:
-```
-mkdir xcode
-cd xcode
-cmake -G Xcode ..
+```bash
+make
 ```
 
-## Glitter
-Polytonic created a project called [Glitter](https://github.com/Polytonic/Glitter) that is a dead-simple boilerplate for OpenGL. 
-Everything you need to run a single LearnOpenGL Project (including all libraries) and just that; nothing more. 
-Perfect if you want to follow along with the chapters, without the hassle of having to manually compile and link all third party libraries!
+#### Step 4. Run the program
 
-## Ports
-Check out [@srcres258](https://github.com/srcres258)'s port in Rust [here](https://github.com/srcres258/learnopengl-rust/).
+On Windows:
+
+```bash
+cd ..
+./bin/0.my_work/${Filename}.exe
+```
+
+On Linux/macOS:
+
+```bash
+cd ..
+./bin/0.my_work/${Filename}
+```
+
+**Note**: if u need to know what file can run after bulid it will show list or can see in ./src/0.my_work/worklist.txt
