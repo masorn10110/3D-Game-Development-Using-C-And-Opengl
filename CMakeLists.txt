@@ -81,6 +81,7 @@ set(CHAPTERS
 
 set(0.my_work
     assignment_2
+    assignment_3
 )
 
 # set(1.getting_started
