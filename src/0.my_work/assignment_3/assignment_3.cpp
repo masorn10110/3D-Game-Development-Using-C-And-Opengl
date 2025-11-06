@@ -107,13 +107,16 @@ int main()
 
     bool isRunning = false;
 
-    Model backpack(FileSystem::getPath("resources/objects/rock/rock.obj"));
+    Model rock(FileSystem::getPath("resources/objects/rock/rock.obj"));
 
     // Distance between camera and player
     float camDistance = 5.0f;
 
     player.position = glm::vec3(0.0f, 0.0f, 10.0f);
-    Box rockBox = {glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)};
+    std::vector<Box> boxes = {
+        {glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)},
+        {glm::vec3(4.0f, 0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)},
+        {glm::vec3(4.0f, 1.5f, 1.0f), glm::vec3(2.0f, 2.0f, 2.0f)}};
     glm::vec3 playerSize(1.0f, 1.0f, 1.0f);
 
     // Main Loop
@@ -125,6 +128,8 @@ int main()
         lastFrame = currentFrame;
 
         processInput(window);
+        int boxCount = boxes.size();
+
         bool moving = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ||
                       glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
 
@@ -160,54 +165,56 @@ int main()
             player.onGround = true;
         }
 
-        if (CheckCollision(player.position, playerSize, rockBox.position, rockBox.size))
+        for (int i = 0; i < boxCount; i++)
         {
-
-            glm::vec3 diff = player.position - rockBox.position;
-            glm::vec3 overlap = glm::vec3(
-                (playerSize.x + rockBox.size.x) * 0.5f - abs(diff.x),
-                (playerSize.y + rockBox.size.y) * 0.5f - abs(diff.y),
-                (playerSize.z + rockBox.size.z) * 0.5f - abs(diff.z));
-
-            // มีการชน
-            if (overlap.x > 0 && overlap.y > 0 && overlap.z > 0)
+            if (CheckCollision(player.position, playerSize, boxes[i].position, boxes[i].size))
             {
-                // ถ้าชนด้านบนหิน
-                if (overlap.y < overlap.x && overlap.y < overlap.z && diff.y > 0.0f)
+
+                glm::vec3 diff = player.position - boxes[i].position;
+                glm::vec3 overlap = glm::vec3(
+                    (playerSize.x + boxes[i].size.x) * 0.5f - abs(diff.x),
+                    (playerSize.y + boxes[i].size.y) * 0.5f - abs(diff.y),
+                    (playerSize.z + boxes[i].size.z) * 0.5f - abs(diff.z));
+
+                // มีการชน
+                if (overlap.x > 0 && overlap.y > 0 && overlap.z > 0)
                 {
-                    player.position.y = rockBox.position.y + (rockBox.size.y + playerSize.y) * 0.5f;
-                    player.velocityY = 0.0f;
-                    player.onGround = true;
-                }
-                else
-                {
-                    // ชนด้านข้าง
-                    if (overlap.x < overlap.z)
+                    // ถ้าชนด้านบนหิน
+                    if (overlap.y < overlap.x && overlap.y < overlap.z && diff.y > 0.0f)
                     {
-                        // ด้านซ้ายหรือขวา
-                        if (diff.x > 0)
-                            player.position.x = rockBox.position.x + (rockBox.size.x + playerSize.x) * 0.5f;
-                        else
-                            player.position.x = rockBox.position.x - (rockBox.size.x + playerSize.x) * 0.5f;
+                        player.position.y = boxes[i].position.y + (boxes[i].size.y + playerSize.y) * 0.5f;
+                        player.velocityY = 0.0f;
+                        player.onGround = true;
                     }
                     else
                     {
-                        // ด้านหน้า-หลัง
-                        if (diff.z > 0)
-                            player.position.z = rockBox.position.z + (rockBox.size.z + playerSize.z) * 0.5f;
+                        // ชนด้านข้าง
+                        if (overlap.x < overlap.z)
+                        {
+                            // ด้านซ้ายหรือขวา
+                            if (diff.x > 0)
+                                player.position.x = boxes[i].position.x + (boxes[i].size.x + playerSize.x) * 0.5f;
+                            else
+                                player.position.x = boxes[i].position.x - (boxes[i].size.x + playerSize.x) * 0.5f;
+                        }
                         else
-                            player.position.z = rockBox.position.z - (rockBox.size.z + playerSize.z) * 0.5f;
+                        {
+                            // ด้านหน้า-หลัง
+                            if (diff.z > 0)
+                                player.position.z = boxes[i].position.z + (boxes[i].size.z + playerSize.z) * 0.5f;
+                            else
+                                player.position.z = boxes[i].position.z - (boxes[i].size.z + playerSize.z) * 0.5f;
+                        }
                     }
                 }
-            }
-            if (player.velocityY < 0.0f && player.position.y > rockBox.position.y)
-            {
-                player.position.y = rockBox.position.y + rockBox.size.y / 2 + playerSize.y / 2;
-                player.velocityY = 0.0f;
-                player.onGround = true;
+                if (player.velocityY < 0.0f && player.position.y > boxes[i].position.y)
+                {
+                    player.position.y = boxes[i].position.y + boxes[i].size.y / 2 + playerSize.y / 2;
+                    player.velocityY = 0.0f;
+                    player.onGround = true;
+                }
             }
         }
-
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -277,10 +284,13 @@ int main()
         staticShader.setMat4("projection", projection);
         staticShader.setMat4("view", view);
 
-        glm::mat4 rockModel = glm::mat4(1.0f);
-        rockModel = glm::translate(rockModel, rockBox.position);
-        staticShader.setMat4("model", rockModel);
-        backpack.Draw(staticShader);
+        for (int i = 0; i < boxCount; i++)
+        {
+            glm::mat4 rockModel = glm::mat4(1.0f);
+            rockModel = glm::translate(rockModel, boxes[i].position);
+            staticShader.setMat4("model", rockModel);
+            rock.Draw(staticShader);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
