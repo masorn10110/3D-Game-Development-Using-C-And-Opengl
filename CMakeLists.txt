@@ -128,6 +128,7 @@ set(2.lighting
 
 set(3.model_loading
     1.model_loading
+    2.model_loading
 )
 
 set(4.advanced_opengl
