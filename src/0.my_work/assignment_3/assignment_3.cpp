@@ -35,6 +35,8 @@ const float GROUND_LEVEL = 0.0f;
 
 float cameraYaw = 0.0f;
 
+float blendAmount = 0.0f;
+
 // Player structure
 struct Player
 {
@@ -113,11 +115,26 @@ int main()
     float camDistance = 5.0f;
 
     player.position = glm::vec3(0.0f, 0.0f, 10.0f);
-    std::vector<Box> boxes = {
-        {glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)},
-        {glm::vec3(4.0f, 0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)},
-        {glm::vec3(4.0f, 1.5f, 1.0f), glm::vec3(2.0f, 2.0f, 2.0f)}};
+    // std::vector<Box> boxes = {
+    //     {glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)},
+    //     {glm::vec3(4.0f, 0.5f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)},
+    //     {glm::vec3(4.0f, 1.5f, 1.0f), glm::vec3(2.0f, 2.0f, 2.0f)}};
     glm::vec3 playerSize(1.0f, 1.0f, 1.0f);
+
+    std::vector<Box> boxes;
+
+    int steps = 10;
+    float radius = 4.0f;     // รัศมีวงกลม
+    float stepHeight = 1.0f; // ระดับความสูงต่อขั้น
+
+    for (int i = 0; i < steps; i++)
+    {
+        float angle = glm::radians(i * 36.0f); // หมุนรอบ (360/10 ขั้น)
+        float x = radius * cos(angle);
+        float z = radius * sin(angle);
+        float y = i * stepHeight;
+        boxes.push_back({glm::vec3(x, y, z), glm::vec3(2.0f, 1.0f, 2.0f)});
+    }
 
     // Main Loop
     while (!glfwWindowShouldClose(window))
@@ -135,12 +152,12 @@ int main()
 
         if (moving && !isRunning)
         {
-            animator.PlayAnimation(&runAnim);
+            animator.PlayAnimation(&runAnim, NULL, animator.m_CurrentTime, animator.m_CurrentTime2, blendAmount);
             isRunning = true;
         }
         else if (!moving && isRunning)
         {
-            animator.PlayAnimation(&idleAnim);
+            animator.PlayAnimation(&idleAnim, NULL, animator.m_CurrentTime, animator.m_CurrentTime2, blendAmount);
             isRunning = false;
         }
 
