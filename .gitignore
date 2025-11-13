@@ -4,3 +4,7 @@ build/
 out/
 
 **.zip
+**.fbx
+**/.DS_Store
+
+resources/objects/Pro Magic Pack

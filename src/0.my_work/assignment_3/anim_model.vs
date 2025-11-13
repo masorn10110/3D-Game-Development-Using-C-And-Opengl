@@ -16,6 +16,8 @@ const int MAX_BONES = 100;
 const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 
+uniform float scaleFactor; // <-- เพิ่ม uniform สำหรับ scale
+
 out vec2 TexCoords;
 
 void main()
@@ -25,17 +27,19 @@ void main()
     {
         if(boneIds[i] == -1) 
             continue;
-        if(boneIds[i] >=MAX_BONES) 
+        if(boneIds[i] >= MAX_BONES) 
         {
             totalPosition = vec4(pos,1.0f);
             break;
         }
         vec4 localPosition = finalBonesMatrices[boneIds[i]] * vec4(pos,1.0f);
         totalPosition += localPosition * weights[i];
-        vec3 localNormal = mat3(finalBonesMatrices[boneIds[i]]) * norm;
-   }
-	
+    }
+    
+    // <-- apply scale หลัง skinning
+    totalPosition.xyz *= scaleFactor;
+
     mat4 viewModel = view * model;
     gl_Position =  projection * viewModel * totalPosition;
-	TexCoords = tex;
+    TexCoords = tex;
 }
