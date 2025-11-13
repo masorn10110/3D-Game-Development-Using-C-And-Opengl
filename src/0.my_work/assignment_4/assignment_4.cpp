@@ -113,7 +113,7 @@ int main()
         // --------------------------------------------------
 
         // render
-        glClearColor(0.95f, 0.95f, 0.95f, 1.0f);
+        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // View/Projection Setup
@@ -175,8 +175,8 @@ int main()
         glm::mat4 handBoneTransform = transforms[handBoneID];
         glm::mat4 worldHandMatrix = model * handBoneTransform;
         glm::mat4 staffOffset = glm::mat4(1.0f);
+        staffOffset = glm::translate(staffOffset, glm::vec3(-1.0f, 1.0f, 1.6f));
         staffOffset = glm::rotate(staffOffset, glm::radians(180.0f), glm::vec3(0, 0, 1));
-        staffOffset = glm::translate(staffOffset, glm::vec3(1.0f, -0.8f, 1.65f));
         staffOffset = glm::scale(staffOffset, glm::vec3(0.3f));
         glm::mat4 staffModelMatrix = worldHandMatrix * staffOffset;
         staffShader.use();
