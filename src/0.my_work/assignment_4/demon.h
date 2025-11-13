@@ -81,6 +81,8 @@ private:
     // Transition times (Calculated based on animation duration)
     const float CAST_TRANSITION_TIME;
     const float ATTACK01_TRANSITION_TIME;
+    const float IDLE_TIME;
+    const float WALK_TIME;
     const float HURT_ANIM_TIME = 0.5f;
 
     int m_handBoneID;
@@ -130,7 +132,9 @@ public:
               m_deadAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing React Death Backward.dae"), &m_model),
               m_animator(&m_idleAnim),
               CAST_TRANSITION_TIME(m_castAnim.GetDuration() * 0.2f),
-              ATTACK01_TRANSITION_TIME(m_attackAnim01.GetDuration() * 0.3f)
+              ATTACK01_TRANSITION_TIME(m_attackAnim01.GetDuration() * 0.3f),
+              WALK_TIME(m_walkAnim.GetDuration() * 0.13f),
+              IDLE_TIME(m_idleAnim.GetDuration() * 0.22f)
     {
         try
         {
@@ -363,6 +367,11 @@ inline void Demon::Update(GLFWwindow *window, float deltaTime, float currentFram
 
 inline void Demon::handleStateIdle(GLFWwindow *window)
 {
+    if (m_animator.m_CurrentTime >= IDLE_TIME)
+    {
+        m_animator.m_CurrentTime = 0.0f;
+    }
+
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
         m_blendAmount = 0.0f;
@@ -393,7 +402,11 @@ inline void Demon::handleStateIdleWalk()
 
 inline void Demon::handleStateWalk(GLFWwindow *window)
 {
-    m_animator.PlayAnimation(&m_walkAnim, NULL, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
+    if (m_animator.m_CurrentTime >= WALK_TIME)
+    {
+        m_animator.m_CurrentTime = 0.0f;
+    }
+    // m_animator.PlayAnimation(&m_walkAnim, NULL, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
     if (glfwGetKey(window, GLFW_KEY_UP) != GLFW_PRESS)
     {
         m_charState = AnimState::WALK_IDLE;
