@@ -7,29 +7,56 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL // 🔴 ต้องรวม
+#include <glm/gtx/rotate_vector.hpp>
+
 #include <learnopengl/filesystem.h>
 #include <learnopengl/shader_m.h>
 #include <learnopengl/animator.h>
 #include <learnopengl/model_animation.h>
 #include <iostream>
-#include <algorithm> // For glm::min/max
+#include <vector>    
+#include <stdexcept> 
+#include <algorithm> 
 
+// 🔴 โครงสร้าง Crystal Attack ถูกย้ายเข้ามาใน Header
+struct Crystal
+{
+    glm::vec3 Position;
+    float RotationY; 
+};
+
+struct CrystalLayer
+{
+    std::vector<Crystal> crystals;
+    int layer; 
+};
+// --------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------
+// 🔴 Enum
+// --------------------------------------------------------------------------------
 enum class AnimState
 {
     IDLE = 1,
     IDLE_PUNCH,
     PUNCH_IDLE,
-    IDLE_KICK,
-    KICK_IDLE,
+    IDLE_ATTACK01, 
+    ATTACK01_IDLE,
+    
     IDLE_WALK,
     WALK_IDLE,
     WALK,
-    HURT,        
+    HURT,
     HURT_IDLE,
-    DEAD         // 🟢 เพิ่มสถานะ DEAD
+    DEAD
 };
 
-class Demon {
+// --------------------------------------------------------------------------------
+// 🔴 Class Declaration (รวม Implementation บางส่วน)
+// --------------------------------------------------------------------------------
+class Demon
+{
 private:
     Model m_model;
     Animator m_animator;
@@ -37,113 +64,213 @@ private:
     // Animations
     Animation m_idleAnim;
     Animation m_walkAnim;
-    Animation m_castAnim;   // Punch
-    Animation m_attackAnim_01; // Kick
-    Animation m_hurtAnim;   // Injury (React Small From Front)
-    Animation m_deadAnim;   // 🟢 NEW: Standing React Death Backward
-    
+    Animation m_castAnim;      
+    Animation m_attackAnim01; 
+    Animation m_hurtAnim;      
+    Animation m_deadAnim;      
+
     AnimState m_charState = AnimState::IDLE;
     float m_blendAmount = 0.0f;
-    float m_blendRate = 0.1f; 
-    bool m_isDead = false; // 🟢 NEW: สถานะการตาย
-    bool m_fireballEmitted = false;
-    
+    float m_blendRate = 0.1f;
+    bool m_isDead = false;
+
+    // Logic สำหรับ Rotation
+    glm::vec3 m_forward = glm::vec3(0.0f, 0.0f, -1.0f); 
+    float m_rotationY = 0.0f;
+
     // Transition times (Calculated based on animation duration)
     const float CAST_TRANSITION_TIME;
-    const float ATTACK_TRANSITION_TIME_01;
-    const float FIRE_EMIT_TIME;
-    const float HURT_ANIM_TIME = 0.5f; 
-    
+    const float ATTACK01_TRANSITION_TIME; 
+    const float HURT_ANIM_TIME = 0.5f;
+
     int m_handBoneID;
-    float m_stateTime = 0.0f; 
+    float m_stateTime = 0.0f;
+    
+    // 🌟🌟 Crystal Attack Logic (Member Variables) 🌟🌟
+    std::vector<CrystalLayer> m_activeAttack;
+    bool m_isAttacking = false; // 🔴 แทนที่ extern bool isAttacking;
+    float m_attackTimer = 0.0f;
+    int m_currentLayer = 0;               
+    
+    // 🔴 ค่าคงที่สำหรับ Crystal Logic (ปรับที่นี่ได้เลย)
+    const float LAYER_SPAWN_RATE = 0.05f; 
+    const float EFFECT_DURATION = 1.0f;  
+    
+    // 🔴 ฟังก์ชันจัดการ Crystal
+    void updateCrystalAttack(float deltaTime, float currentFrame);
+    // 🌟🌟 สิ้นสุด Crystal Attack Logic 🌟🌟
 
     // --- State Handler Prototypes ---
-    void handleStateIdle(GLFWwindow* window);
+    void handleStateIdle(GLFWwindow *window);
     void handleStateIdleWalk();
-    void handleStateWalk(GLFWwindow* window);
+    void handleStateWalk(GLFWwindow *window);
     void handleStateWalkIdle();
     void handleStateIdlePunch();
     void handleStatePunchIdle();
-    void handleStateIdleKick();
-    void handleStateKickIdle();
+    
+    void handleStateIdleAttack01(); 
+    void handleStateAttack01Idle();
+    
     void handleStateHurt();
     void handleStateHurtIdle();
-    void handleStateDead(); // 🟢 NEW Handler
-    
+    void handleStateDead();
+
     // --- Interrupt Logic ---
-    bool checkHurtInterrupt(GLFWwindow* window);
+    bool checkHurtInterrupt(GLFWwindow *window);
 
 public:
-    Demon() :
-        m_model(FileSystem::getPath("resources/objects/Whiteclown/Whiteclown N Hallin.dae")),
-        m_idleAnim(FileSystem::getPath("resources/objects/Whiteclown/standing idle.dae"), &m_model),
-        m_walkAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing Walk Forward.dae"), &m_model),
-        m_castAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing 2H Cast Spell 01.dae"), &m_model),
-        m_attackAnim_01(FileSystem::getPath("resources/objects/Whiteclown/Standing 2H Magic Attack 01.dae"), &m_model),
-        m_hurtAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing React Small From Front.dae"), &m_model), // 🟢 อัปเดต Path
-        m_deadAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing React Death Backward.dae"), &m_model),   // 🟢 NEW Path
-        m_animator(&m_idleAnim),
-        CAST_TRANSITION_TIME(m_castAnim.GetDuration() * 0.2f),
-        ATTACK_TRANSITION_TIME_01(m_attackAnim_01.GetDuration() * 0.3f),
-        FIRE_EMIT_TIME(m_castAnim.GetDuration() * 0.15f)
+    // 1. Constructor (Implementation อยู่ใน .h)
+    Demon() : m_model(FileSystem::getPath("resources/objects/Whiteclown/Whiteclown N Hallin.dae")),
+              m_idleAnim(FileSystem::getPath("resources/objects/Whiteclown/standing idle.dae"), &m_model),
+              m_walkAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing Walk Forward.dae"), &m_model),
+              m_castAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing 2H Cast Spell 01.dae"), &m_model),
+              m_attackAnim01(FileSystem::getPath("resources/objects/Whiteclown/Standing 2H Magic Attack 01.dae"), &m_model), 
+              m_hurtAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing React Small From Front.dae"), &m_model),
+              m_deadAnim(FileSystem::getPath("resources/objects/Whiteclown/Standing React Death Backward.dae"), &m_model),
+              m_animator(&m_idleAnim),
+              CAST_TRANSITION_TIME(m_castAnim.GetDuration() * 0.2f),
+              ATTACK01_TRANSITION_TIME(m_attackAnim01.GetDuration() * 0.3f) 
     {
-        try {
+        try
+        {
             m_handBoneID = m_model.GetBoneInfoMap().at("Armature_mixamorig_RightHand").id;
-        } catch (const std::out_of_range& oor) {
+        }
+        catch (const std::out_of_range &oor)
+        {
             std::cerr << "Error: Bone 'Armature_mixamorig_RightHand' not found in model." << std::endl;
             m_handBoneID = -1;
         }
     }
 
-    void Update(GLFWwindow* window, float deltaTime);
-    void Draw(Shader& shader) { m_model.Draw(shader); }
+    // 2. Public Methods 
+    void Update(GLFWwindow *window, float deltaTime, float currentFrame); // 🔴 รับ currentFrame มาด้วย
+    void Draw(Shader &shader) { m_model.Draw(shader); }
     int GetHandBoneID() const { return m_handBoneID; }
-    const std::vector<glm::mat4>& GetFinalBoneMatrices() const { return m_animator.m_FinalBoneMatrices; }
+    const std::vector<glm::mat4> &GetFinalBoneMatrices() const { return m_animator.m_FinalBoneMatrices; }
 
-    // 🟢 Public utility for triggering death (e.g., from external game logic)
-    void TriggerDeath() { 
-        if (!m_isDead) {
-            m_isDead = true; 
-            m_blendAmount = 0.0f; 
-            // Blend จาก Animation ปัจจุบันไปหา Dead Animation
+    glm::vec3 GetForwardDirection() const { return m_forward; }
+    float GetRotationY() const { return m_rotationY; }
+
+    void TriggerDeath()
+    {
+        if (!m_isDead)
+        {
+            m_isDead = true;
+            m_blendAmount = 0.0f;
             m_animator.PlayAnimation(m_animator.m_CurrentAnimation, &m_deadAnim, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
             m_charState = AnimState::DEAD;
         }
     }
-    bool IsDead() const { return m_isDead; } // Utility function
+    bool IsDead() const { return m_isDead; } 
+    
+    // 🌟🌟 Demon::Attack() (Implementation อยู่ใน .h)
+    void Attack()
+    {
+        if (m_isDead) return;
+        
+        // 🔴 เริ่มต้น Attack Logic
+        m_isAttacking = true;
+        m_attackTimer = 0.0f;
+        m_currentLayer = 0;
+        m_activeAttack.clear(); 
+        
+        if (m_charState == AnimState::IDLE)
+        {
+            m_blendAmount = 0.0f;
+            m_animator.PlayAnimation(&m_idleAnim, &m_attackAnim01, m_animator.m_CurrentTime, 0.0f, m_blendAmount); 
+            m_charState = AnimState::IDLE_ATTACK01; 
+        }
+        else if (m_charState == AnimState::WALK)
+        {
+            m_blendAmount = 0.0f;
+            m_animator.PlayAnimation(&m_walkAnim, &m_attackAnim01, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
+            m_charState = AnimState::IDLE_ATTACK01;
+        }
+    }
+    
+    // 🌟🌟 Getter สำหรับ Crystal Logic (ใช้ใน main.cpp สำหรับ Render)
+    bool IsCastingAttack() const { return m_isAttacking; }
+    const std::vector<CrystalLayer>& GetActiveAttackCrystals() const { return m_activeAttack; }
+    // 🌟🌟
 };
 
-// --- Demon Implementation ---
+// --------------------------------------------------------------------------------
+// 🔴 Full Implementation of remaining methods (ต้องนิยามนอกคลาส แต่ยังอยู่ในไฟล์ .h)
+// --------------------------------------------------------------------------------
 
-bool Demon::checkHurtInterrupt(GLFWwindow* window)
+inline void Demon::updateCrystalAttack(float deltaTime, float currentFrame)
 {
-    if (m_isDead) return false; // 🟢 ถ้าตายแล้ว ไม่ต้องประมวลผล Interrupt อื่นๆ
+    if (m_isAttacking)
+    {
+        m_attackTimer += deltaTime;
 
-    // 🟢 ตรวจสอบการกดปุ่ม 'L' สำหรับ Death (Lethal Hit)
+        if (m_currentLayer < 20 && m_attackTimer >= m_currentLayer * LAYER_SPAWN_RATE)
+        {
+            m_currentLayer++;
+            CrystalLayer newLayer;
+            newLayer.layer = m_currentLayer;
+            
+            // 🔴 ค่าที่ปรับเพื่อควบคุมการกระจายตัว (เหมือนที่ปรับในขั้นตอนก่อนหน้า)
+            float zOffset = 0.5f + (m_currentLayer * 0.7f); 
+            float radius = (m_currentLayer * 0.15f);       
+            int numCrystals = glm::min(m_currentLayer * 2, 12); 
+            
+            glm::mat4 demonBaseModel = glm::mat4(1.0f);
+            demonBaseModel = glm::translate(demonBaseModel, glm::vec3(0.0f, -0.4f, 0.0f)); 
+            demonBaseModel = glm::rotate(demonBaseModel, glm::radians(GetRotationY()), glm::vec3(0.0f, 1.0f, 0.0f));
+            demonBaseModel = glm::scale(demonBaseModel, glm::vec3(.5f, .5f, .5f)); 
+
+            for (int i = 0; i < numCrystals; ++i)
+            {
+                Crystal crystal;
+                float angle = (float)i / (float)numCrystals * 60.0f - 30.0f; 
+                
+                glm::vec3 localPos = glm::vec3(
+                    radius * glm::sin(glm::radians(angle)), 
+                    0.0f, // 🔴 คงระดับความสูงไว้ที่ 0.0f (ระดับเท้า Demon)
+                    zOffset + radius * glm::cos(glm::radians(angle)) 
+                );
+                
+                crystal.Position = glm::vec3(demonBaseModel * glm::vec4(localPos, 1.0f));
+                crystal.RotationY = angle + (currentFrame * 100.0f); 
+                
+                newLayer.crystals.push_back(crystal);
+            }
+            m_activeAttack.push_back(newLayer);
+        }
+        
+        if (m_attackTimer >= EFFECT_DURATION)
+        {
+            m_isAttacking = false;
+            m_activeAttack.clear();
+            m_currentLayer = 0;
+        }
+    }
+}
+
+inline bool Demon::checkHurtInterrupt(GLFWwindow *window)
+{
+    // ... (โค้ดเดิม)
+    if (m_isDead)
+        return false;
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
     {
-        TriggerDeath(); 
+        TriggerDeath();
         return true;
     }
-
-    // ตรวจสอบการกดปุ่ม 'H' สำหรับ HURT
     if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
     {
-        // อนุญาตให้ถูกขัดจังหวะหากอยู่ในสถานะ IDLE, หรือกำลัง Blend กลับไป IDLE
         if (m_charState == AnimState::IDLE || m_charState == AnimState::WALK_IDLE)
         {
             m_blendAmount = 0.0f;
-            Animation* currentAnim = m_animator.m_CurrentAnimation;
-            
-            // Blend จาก Current Animation ไปยัง HURT
+            Animation *currentAnim = m_animator.m_CurrentAnimation;
             m_animator.PlayAnimation(currentAnim, &m_hurtAnim, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
             m_charState = AnimState::HURT;
-            m_stateTime = 0.0f; // Reset state timer
+            m_stateTime = 0.0f;
             return true;
         }
-        // ไม่อนุญาตให้ถูกขัดจังหวะหากอยู่ในลำดับ PUNCH/KICK หรือ WALK
         else if (m_charState == AnimState::IDLE_PUNCH || m_charState == AnimState::PUNCH_IDLE ||
-                 m_charState == AnimState::IDLE_KICK || m_charState == AnimState::KICK_IDLE ||
+                 m_charState == AnimState::IDLE_ATTACK01 || m_charState == AnimState::ATTACK01_IDLE ||
                  m_charState == AnimState::WALK || m_charState == AnimState::HURT || m_charState == AnimState::HURT_IDLE)
         {
             return false;
@@ -152,9 +279,8 @@ bool Demon::checkHurtInterrupt(GLFWwindow* window)
     return false;
 }
 
-void Demon::Update(GLFWwindow* window, float deltaTime)
+inline void Demon::Update(GLFWwindow *window, float deltaTime, float currentFrame)
 {
-    // 🟢 ตรวจสอบสถานะความตายก่อน
     if (m_isDead)
     {
         handleStateDead();
@@ -162,10 +288,32 @@ void Demon::Update(GLFWwindow* window, float deltaTime)
         return;
     }
 
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        m_rotationY += 100.0f * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        m_rotationY -= 100.0f * deltaTime;
+    }
+
+    m_forward.x = glm::sin(glm::radians(m_rotationY));
+    m_forward.z = -glm::cos(glm::radians(m_rotationY));
+    m_forward = glm::normalize(m_forward);
+
     // 1. ตรวจสอบการขัดจังหวะ (Interrupt)
     checkHurtInterrupt(window);
-
-    // 2. State Machine update
+    
+    // 🌟🌟 เรียก Attack() หากกด Spacebar และไม่กำลังโจมตีอยู่
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS && !m_isAttacking) // 🔴 ใช้ m_isAttacking
+    {
+        Attack();
+    }
+    
+    // 2. จัดการ Crystal Attack Logic
+    updateCrystalAttack(deltaTime, currentFrame); // 🔴 เรียกใช้ฟังก์ชันที่ถูกย้ายเข้ามา
+    
+    // 3. State Machine update (โค้ดเดิม)
     switch (m_charState)
     {
     case AnimState::IDLE:
@@ -186,11 +334,11 @@ void Demon::Update(GLFWwindow* window, float deltaTime)
     case AnimState::PUNCH_IDLE:
         handleStatePunchIdle();
         break;
-    case AnimState::IDLE_KICK:
-        handleStateIdleKick();
+    case AnimState::IDLE_ATTACK01: 
+        handleStateIdleAttack01();
         break;
-    case AnimState::KICK_IDLE:
-        handleStateKickIdle();
+    case AnimState::ATTACK01_IDLE:
+        handleStateAttack01Idle();
         break;
     case AnimState::HURT:
         handleStateHurt();
@@ -202,14 +350,12 @@ void Demon::Update(GLFWwindow* window, float deltaTime)
         handleStateDead();
         break;
     }
-    
-    // 3. Update animator
+
+    // 4. Update animator
     m_animator.UpdateAnimation(deltaTime);
 }
 
-// ... (State Handlers IDLE to KICK_IDLE โค้ดเดิม) ...
-
-void Demon::handleStateIdle(GLFWwindow* window)
+inline void Demon::handleStateIdle(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
@@ -223,15 +369,9 @@ void Demon::handleStateIdle(GLFWwindow* window)
         m_animator.PlayAnimation(&m_idleAnim, &m_castAnim, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
         m_charState = AnimState::IDLE_PUNCH;
     }
-    else if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
-    {
-        m_blendAmount = 0.0f;
-        m_animator.PlayAnimation(&m_idleAnim, &m_attackAnim_01, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
-        m_charState = AnimState::IDLE_KICK;
-    }
 }
 
-void Demon::handleStateIdleWalk()
+inline void Demon::handleStateIdleWalk()
 {
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
@@ -245,7 +385,7 @@ void Demon::handleStateIdleWalk()
     }
 }
 
-void Demon::handleStateWalk(GLFWwindow* window)
+inline void Demon::handleStateWalk(GLFWwindow *window)
 {
     m_animator.PlayAnimation(&m_walkAnim, NULL, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
     if (glfwGetKey(window, GLFW_KEY_UP) != GLFW_PRESS)
@@ -254,7 +394,7 @@ void Demon::handleStateWalk(GLFWwindow* window)
     }
 }
 
-void Demon::handleStateWalkIdle()
+inline void Demon::handleStateWalkIdle()
 {
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
@@ -268,7 +408,7 @@ void Demon::handleStateWalkIdle()
     }
 }
 
-void Demon::handleStateIdlePunch()
+inline void Demon::handleStateIdlePunch()
 {
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
@@ -282,15 +422,8 @@ void Demon::handleStateIdlePunch()
     }
 }
 
-void Demon::handleStatePunchIdle()
+inline void Demon::handleStatePunchIdle()
 {
-  if (m_animator.m_CurrentTime >= FIRE_EMIT_TIME && !m_fireballEmitted)
-    {
-        // 🟢 จุดนี้คือจุดที่ Fireball ถูกสร้างขึ้น
-        // (ต้องเรียกฟังก์ชันใน main/game loop)
-        // ตัวอย่าง: TriggerFireball(); 
-        m_fireballEmitted = true;
-    }
     if (m_animator.m_CurrentTime >= CAST_TRANSITION_TIME)
     {
         m_blendAmount += m_blendRate;
@@ -306,27 +439,27 @@ void Demon::handleStatePunchIdle()
     }
 }
 
-void Demon::handleStateIdleKick()
+inline void Demon::handleStateIdleAttack01()
 {
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
-    m_animator.PlayAnimation(&m_idleAnim, &m_attackAnim_01, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
+    m_animator.PlayAnimation(&m_idleAnim, &m_attackAnim01, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
     if (m_blendAmount >= 1.0f)
     {
         m_blendAmount = 0.0f;
         float startTime = m_animator.m_CurrentTime2;
-        m_animator.PlayAnimation(&m_attackAnim_01, NULL, startTime, 0.0f, m_blendAmount);
-        m_charState = AnimState::KICK_IDLE;
+        m_animator.PlayAnimation(&m_attackAnim01, NULL, startTime, 0.0f, m_blendAmount); 
+        m_charState = AnimState::ATTACK01_IDLE; 
     }
 }
 
-void Demon::handleStateKickIdle()
+inline void Demon::handleStateAttack01Idle()
 {
-    if (m_animator.m_CurrentTime >= ATTACK_TRANSITION_TIME_01)
+    if (m_animator.m_CurrentTime >= ATTACK01_TRANSITION_TIME)
     {
         m_blendAmount += m_blendRate;
         m_blendAmount = glm::min(m_blendAmount, 1.0f);
-        m_animator.PlayAnimation(&m_attackAnim_01, &m_idleAnim, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
+        m_animator.PlayAnimation(&m_attackAnim01, &m_idleAnim, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount); 
         if (m_blendAmount >= 1.0f)
         {
             m_blendAmount = 0.0f;
@@ -337,39 +470,29 @@ void Demon::handleStateKickIdle()
     }
 }
 
-
-void Demon::handleStateHurt()
+inline void Demon::handleStateHurt()
 {
-    // Play the animation and continue blending to HURT
     m_animator.PlayAnimation(m_animator.m_CurrentAnimation, &m_hurtAnim, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
-
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
-
     if (m_blendAmount >= 1.0f)
     {
-        // Once blending is complete, start timing the fixed duration
         m_stateTime += m_animator.m_DeltaTime;
-
         if (m_stateTime >= HURT_ANIM_TIME)
         {
-            // Time is up, transition to blend back to IDLE
             m_blendAmount = 0.0f;
             m_charState = AnimState::HURT_IDLE;
         }
     }
 }
 
-void Demon::handleStateHurtIdle()
+inline void Demon::handleStateHurtIdle()
 {
-    // Blend from HURT back to IDLE
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
     m_animator.PlayAnimation(&m_hurtAnim, &m_idleAnim, m_animator.m_CurrentTime, m_animator.m_CurrentTime2, m_blendAmount);
-    
     if (m_blendAmount >= 1.0f)
     {
-        // Transition complete, switch to IDLE state
         m_blendAmount = 0.0f;
         float startTime = m_animator.m_CurrentTime2;
         m_animator.PlayAnimation(&m_idleAnim, NULL, startTime, 0.0f, m_blendAmount);
@@ -377,24 +500,18 @@ void Demon::handleStateHurtIdle()
     }
 }
 
-void Demon::handleStateDead()
+inline void Demon::handleStateDead()
 {
-    // 🟢 NEW Handler: จัดการสถานะการตาย
     m_animator.PlayAnimation(m_animator.m_CurrentAnimation, &m_deadAnim, m_animator.m_CurrentTime, 0.0f, m_blendAmount);
-
     m_blendAmount += m_blendRate;
     m_blendAmount = glm::min(m_blendAmount, 1.0f);
-
-    // เมื่อ Blend เสร็จแล้ว ให้ Animation เล่นจนจบและหยุดที่เฟรมสุดท้าย
     if (m_blendAmount >= 1.0f)
     {
-        // Lock animation time to the end of the dead animation duration
         if (m_animator.m_CurrentTime >= m_deadAnim.GetDuration())
         {
             m_animator.m_CurrentTime = m_deadAnim.GetDuration();
         }
     }
-    // ไม่มีการเปลี่ยนสถานะออกจาก DEAD
 }
 
 #endif // DEMON_H

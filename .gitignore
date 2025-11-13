@@ -6,5 +6,6 @@ out/
 **.zip
 **.fbx
 **/.DS_Store
+**.py
 
 resources/objects/Pro Magic Pack
